@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title></title>
+    <link rel="stylesheet" href="dist/reveal.css" />
+    <link rel="stylesheet" href="dist/theme/consult.css" id="theme" />
+    <link rel="stylesheet" href="plugin/highlight/zenburn.css" />
+	<link rel="stylesheet" href="css/layout.css" />
+	<link rel="stylesheet" href="plugin/customcontrols/style.css">
+
+
+
+    <script defer src="dist/fontawesome/all.min.js"></script>
+
+	<script type="text/javascript">
+		var forgetPop = true;
+		function onPopState(event) {
+			if(forgetPop){
+				forgetPop = false;
+			} else {
+				parent.postMessage(event.target.location.href, "app://obsidian.md");
+			}
+        }
+		window.onpopstate = onPopState;
+		window.onmessage = event => {
+			if(event.data == "reload"){
+				window.document.location.reload();
+			}
+			forgetPop = true;
+		}
+
+		function fitElements(){
+			const itemsToFit = document.getElementsByClassName('fitText');
+			for (const item in itemsToFit) {
+				if (Object.hasOwnProperty.call(itemsToFit, item)) {
+					var element = itemsToFit[item];
+					fitElement(element,1, 1000);
+					element.classList.remove('fitText');
+				}
+			}
+		}
+
+		function fitElement(element, start, end){
+
+			let size = (end + start) / 2;
+			element.style.fontSize = `${size}px`;
+
+			if(Math.abs(start - end) < 1){
+				while(element.scrollHeight > element.offsetHeight){
+					size--;
+					element.style.fontSize = `${size}px`;
+				}
+				return;
+			}
+
+			if(element.scrollHeight > element.offsetHeight){
+				fitElement(element, start, size);
+			} else {
+				fitElement(element, size, end);
+			}		
+		}
+
+
+		document.onreadystatechange = () => {
+			fitElements();
+			if (document.readyState === 'complete') {
+				if (window.location.href.indexOf("?export") != -1){
+					parent.postMessage(event.target.location.href, "app://obsidian.md");
+				}
+				if (window.location.href.indexOf("print-pdf") != -1){
+					let stateCheck = setInterval(() => {
+						clearInterval(stateCheck);
+						window.print();
+					}, 250);
+				}
+			}
+	};
+
+
+        </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides"><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 自動化合成腳本介紹
+
+## synthesis_summary.tcl 完整分析與應用
+
+### Tcl 腳本程式分析與合成結果評估
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 簡報大綱
+
+1. **腳本概述與架構設計**
+2. **核心功能與程式分析**
+3. **實際合成結果與性能評估**
+4. **設計權衡與最佳化策略**
+5. **結論**
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding-top: 10%" class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 第一部分：腳本概述與架構設計
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## synthesis_summary.tcl 腳本功能概述
+
+**主要功能：**
+
+- 自動掃描所有Lib文件
+- 批次執行合成流程
+- 生成綜合匯總報告
+
+**設計目標：**
+
+- 完全自動化的合成流程
+- 多配置參數組合測試
+- 系統化的結果分析
+
+**技術特色：**
+
+- 智能Lib檔案掃描
+- 錯誤處理與容錯機制
+- 標準化報告輸出格式
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 腳本架構設計
+
+**全局設定與初始化**
+
+```tcl
+set DESIGN "task_dependency_processor"
+set synthetic_library dw_foundation.sldb
+
+# 創建輸出目錄結構
+file mkdir Report
+file mkdir Netlist
+file mkdir Summary
+```
+
+**核心流程架構：**
+
+1. Lib檔案自動掃描
+2. 配置組合生成
+3. 批次合成執行
+4. 結果解析與報告
+5. 清理與結束處理
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding-top: 10%" class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 第二部分：核心功能與程式分析
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Lib檔案自動掃描功能
+
+**掃描三種門檻值電壓類型：**
+
+- **HVT (High Vt)：** 高門檻值電壓，低漏電流
+- **SVT (Standard Vt)：** 標準門檻值電壓，平衡性能
+- **LVT (Low Vt)：** 低門檻值電壓，高速度
+
+**配置組合生成：**
+
+```tcl
+proc scan_libraries {} {
+    set lib_configs {}
+    
+    # 掃描三種Lib類型
+    set lib_types {hvt lvt svt}
+    
+    foreach lib_type $lib_types {
+        set lib_path "/lib/SAED90_EDK/SAED_EDK90nm_ccs_models_${lib_type}"
+        
+        if {[file exists $lib_path]} {
+            # 找出所有.db檔案
+            set db_files [glob -nocomplain "${lib_path}/*.db"]
+            
+            foreach db_file $db_files {
+                set lib_name [file rootname [file tail $db_file]]
+                
+                # 測試不同 clk 週期
+                foreach clk_period {2 4} {
+                    foreach output_load {0 15} {
+                        lappend lib_configs [list `$lib_name $`lib_type `$lib_path $`clk_period $output_load]
+                    }
+                }
+            }
+        }
+    }
+    
+    return $lib_configs
+}
+```
+
+**技術創新點：**
+
+- 動態Lib檔案發現
+- 枚舉配置生成
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 主要合成流程分析
+
+**RTL 讀取與錯誤處理：**
+
+```tcl
+if {[catch {
+    read_verilog -rtl ./task/dependency_checker.v
+    read_verilog -rtl ./task/task_dependency_processor.v
+    current_design $DESIGN
+} error]} {
+    puts "RTL讀取錯誤: $error"
+    # 錯誤處理邏輯
+    continue
+}
+```
+
+**設計約束設定：**
+
+- clk 約束與時序約束
+- 輸入/輸出延遲設定
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 合成執行與品質控制
+
+**合成指令序列：**
+
+```tcl
+uniquify
+set_fix_multiple_port_nets -all -buffer_constants
+set_fix_hold [all_clocks]
+compile_ultra
+```
+
+**報告生成策略：**
+
+- 時序分析報告
+- 面積分析報告
+- 功耗分析報告
+
+**關鍵指標提取：**
+
+- **Slack 值：** 時序餘量分析
+- **Data Arrival Time：** 關鍵路徑資料到達時間
+- **Total cell area：** 面積
+- **Number of Cell：** 電晶體單元數量
+- **Dynamic Power：** 動態功率消耗
+- **Leakage Power：** 漏電功率
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## synthesis_summary.tcl 完整腳本程式
+
+```tcl
+#======================================================
+#
+# 自動化 Synopsys 合成腳本 (Design Vision dctcl mode)
+# 自動掃描所有庫文件並執行合成
+#
+#======================================================
+
+#======================================================
+# 全局設定
+#======================================================
+set DESIGN "task_dependency_processor"
+set synthetic_library dw_foundation.sldb
+
+# 創建輸出目錄
+file mkdir Report
+file mkdir Netlist
+file mkdir Summary
+
+#======================================================
+# 自動掃描所有可用的Lib文件
+#======================================================
+proc scan_libraries {} {
+    set lib_configs {}
+    
+    # 掃描三種Lib類型
+    set lib_types {hvt lvt svt}
+    
+    foreach lib_type $lib_types {
+        set lib_path "/lib/SAED90_EDK/SAED_EDK90nm_ccs_models_${lib_type}"
+        
+        if {[file exists $lib_path]} {
+            # 找出所有.db檔案
+            set db_files [glob -nocomplain "${lib_path}/*.db"]
+            
+            foreach db_file $db_files {
+                set lib_name [file rootname [file tail $db_file]]
+                
+                # 測試不同 clk 週期
+                foreach clk_period {2 4} {
+                    foreach output_load {0 15} {
+                        lappend lib_configs [list `$lib_name $`lib_type `$lib_path $`clk_period $output_load]
+                    }
+                }
+            }
+        }
+    }
+    
+    return $lib_configs
+}
+
+#======================================================
+# 獲取所有配置
+#======================================================
+set LIB_CONFIGS [scan_libraries]
+
+puts "找到 [llength $LIB_CONFIGS] 個配置要測試"
+
+#======================================================
+# 打開匯總報告文件
+#======================================================
+set summary_file [open "Summary/synthesis_summary.txt" w]
+puts $summary_file "合成結果匯總報告"
+puts `$summary_file "設計: $`DESIGN"
+puts $summary_file "生成時間: [clock format [clock seconds]]"
+puts $summary_file ""
+puts $summary_file [format "%-25s %-8s %-8s %-8s %-8s %-8s %-12s %-12s %-12s %-12s %-12s %-12s %-12s" \
+    "Lib名稱" "製程" "類型" "條件" "時鐘" "負載" "Slack" "延遲" "面積" "單元數" "動態功率" "洩漏功率" "狀態"]
+puts $summary_file [string repeat "-" 155]
+
+#======================================================
+# 主要合成循環
+#======================================================
+foreach config $LIB_CONFIGS {
+    set lib_name [lindex $config 0]
+    set lib_type [lindex $config 1]
+    set lib_path [lindex $config 2]
+    set clk_period [lindex $config 3]
+    set output_loading [lindex $config 4]
+    
+    puts "處理: `$lib_name ($`lib_type) `${clk_period}ns $`{output_loading}pf"
+    
+    # 設定Lib路徑
+    set search_path $lib_path
+    set link_library [list ${lib_name}.db dw_foundation.sldb]
+    set target_library [list ${lib_name}.db]
+    
+    # 設定設計庫
+    set lib_work_name "WORK_`${lib_type}_$`{clk_period}_${output_loading}"
+    define_design_lib `$lib_work_name -path ./LIB_$`{lib_type}_`${clk_period}_$`{output_loading}
+    
+    # 讀取RTL
+    if {[catch {
+        read_verilog -rtl ./task/dependency_checker.v
+        read_verilog -rtl ./task/task_dependency_processor.v
+        current_design $DESIGN
+    } error]} {
+        puts "RTL讀取錯誤: $error"
+        set process "90nm"
+        if {[regexp {saed(\d+)nm} $lib_name match process_val]} {
+            set process "${process_val}nm"
+        }
+        puts $summary_file [format "%-25s %-8s %-8s %-8s %-8s %-8s %-12s %-12s %-12s %-12s %-12s %-12s %-12s" \
+            `$lib_name $`process `$lib_type "N/A" "$`{clk_period}ns" "${output_loading}pf" "N/A" "N/A" "N/A" "N/A" "N/A" "N/A" "RTL錯誤"]
+        continue
+    }
+    
+    # 設計約束
+    set_wire_load_mode enclosed
+    
+    create_clock -name "CLK" -period $clk_period clk
+    set_input_delay [expr $clk_period*0.1] -clock CLK [all_inputs]
+    set_output_delay [expr $clk_period*0.1] -clock CLK [all_outputs]
+    
+    # 移除時鐘約束
+    if {[sizeof_collection [get_ports clk -quiet]] > 0} {
+        remove_input_delay -clock CLK clk
+    }
+    if {[sizeof_collection [get_ports rst_n -quiet]] > 0} {
+        remove_input_delay -clock CLK rst_n
+        set_false_path -to rst_n
+    }
+    
+    # 設定負載
+    if {$output_loading == 0} {
+        set_load 0.00 [all_outputs]
+    } else {
+        set_load $output_loading [all_outputs]
+    }
+    
+    # 基本約束
+    set_clock_uncertainty 0.1 [get_clocks CLK]
+    set_max_transition 0.2 [current_design]
+    set_max_fanout 16 [current_design]
+    
+    # 執行合成
+    if {[catch {
+        uniquify
+        set_fix_multiple_port_nets -all -buffer_constants
+        set_fix_hold [all_clocks]
+        compile_ultra
+    } error]} {
+        puts "合成失敗: $error"
+        set process "90nm"
+        set condition "typ"
+        if {[regexp {saed(\d+)nm} $lib_name match process_val]} {
+            set process "${process_val}nm"
+        }
+        if {[regexp {_(typ|max|min)_} $lib_name match cond_val]} {
+            set condition $cond_val
+        }
+        puts $summary_file [format "%-25s %-8s %-8s %-8s %-8s %-8s %-12s %-12s %-12s %-12s %-12s %-12s %-12s" \
+            `$lib_name $`process `$lib_type $`condition "`${clk_period}ns" "$`{output_loading}pf" "N/A" "N/A" "N/A" "N/A" "N/A" "N/A" "合成失敗"]
+        remove_design -all
+        continue
+    }
+    
+    # 生成報告
+    set report_suffix "`${lib_name}_$`{clk_period}ns_${output_loading}pf"
+    
+    report_timing -max_paths 1 > Report/${report_suffix}.timing
+    report_area > Report/${report_suffix}.area
+    report_power > Report/${report_suffix}.power
+    
+    # 從Lib名稱提取製程和條件資訊
+    set process "90nm"
+    set condition "typ"
+    if {[regexp {saed(\d+)nm} $lib_name match process_val]} {
+        set process "${process_val}nm"
+    }
+    if {[regexp {_(typ|max|min)_} $lib_name match cond_val]} {
+        set condition $cond_val
+    }
+    
+    # 提取關鍵資訊
+    set slack "N/A"
+    set delay "N/A"
+    set area "N/A"
+    set cell_count "N/A"
+    set dynamic_power "N/A"
+    set leakage_power "N/A"
+    set status "完成"
+    
+    # 讀取時序資訊
+    if {[file exists Report/${report_suffix}.timing]} {
+        set timing_file [open Report/${report_suffix}.timing r]
+        set timing_content [read $timing_file]
+        close $timing_file
+        
+if {[regexp {slack \((<sup id="fnref:)" role="doc-noteref">1</sup>+)\)\s+([-\d.]+)} $timing_content match type slack_val]} {
+            if {$type == "VIOLATED"} {
+                set slack "${slack_val}*"
+                set status "時序違規"
+            } else {
+                set slack [format "%.3f" $slack_val]
+            }
+        }
+        
+        if {[regexp {data arrival time\s+([\d.]+)} $timing_content match delay_val]} {
+            set delay [format "%.3f" $delay_val]
+        }
+    }
+    
+    # 讀取面積資訊
+    if {[file exists Report/${report_suffix}.area]} {
+        set area_file [open Report/${report_suffix}.area r]
+        set area_content [read $area_file]
+        close $area_file
+        
+        if {[regexp {Total cell area:\s+([\d.]+)} $area_content match area_val]} {
+            set area [format "%.1f" $area_val]
+        }
+        if {[regexp {Number of cells:\s+(\d+)} $area_content match count_val]} {
+            set cell_count $count_val
+        }
+    }
+    
+    # 讀取功耗資訊
+    if {[file exists Report/${report_suffix}.power]} {
+        set power_file [open Report/${report_suffix}.power r]
+        set power_content [read $power_file]
+        close $power_file
+        
+        if {[regexp {Total Dynamic Power\s*=\s*([\d.e+-]+)\s*(\w+)} $power_content match power_val unit]} {
+            set dynamic_power [format "%.2f%s" `$power_val $`unit]
+        }
+        if {[regexp {Cell Leakage Power\s*=\s*([\d.e+-]+)\s*(\w+)} $power_content match power_val unit]} {
+            set leakage_power [format "%.2f%s" `$power_val $`unit]
+        }
+    }
+    
+    # 輸出到匯總報告
+    puts $summary_file [format "%-25s %-8s %-8s %-8s %-8s %-8s %-12s %-12s %-12s %-12s %-12s %-12s %-12s" \
+        `$lib_name $`process `$lib_type $`condition "`${clk_period}ns" "$`{output_loading}pf" `$slack $`delay `$area $`cell_count `$dynamic_power $`leakage_power $status]
+    
+    # 如果時序OK，輸出網表
+    if {$status == "完成"} {
+        change_names -hierarchy -rule verilog
+        set verilogout_higher_designs_first true
+        set verilogout_no_tri true
+        write -format verilog -output Netlist/${report_suffix}.v -hierarchy
+    }
+    
+    # 清理
+    remove_design -all
+    
+    puts "完成: $lib_name"
+}
+
+#======================================================
+# 結束處理
+#======================================================
+puts $summary_file ""
+puts $summary_file "說明："
+puts $summary_file "• Slack後面有*表示時序違規"
+puts $summary_file "• 面積和功耗單位根據Lib文件而定"
+puts $summary_file "• 製程：從庫名稱中提取的製程節點"
+puts $summary_file "• 條件：typ=典型, max=最大, min=最小"
+
+close $summary_file
+
+puts "==============================================="
+puts "所有配置合成完成！"
+puts "匯總報告: Summary/synthesis_summary.txt"
+puts "詳細報告: Report/ 目錄"
+puts "網表文件: Netlist/ 目錄"
+puts "==============================================="
+
+exit
+```
+
+<div class="footnotes" role="doc-endnotes">
+<ol>
+</ol>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding-top: 10%" class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 第三部分：實際合成結果與性能評估
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Task Dependency Processor 設計概述
+
+**測試設計：** task_dependency_processor **製程技術：** 90nm CMOS 製程 **測試範圍：**
+
+- 3種門檻值電壓類型 (HVT/SVT/LVT)
+- 2種 clk 頻率 (2ns/4ns)
+- 2種 output loading 條件 (0pf/15pf)
+- 3種工作條件 (min/typ/max)
+
+**總配置數：** 36 種不同組合
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 門檻值電壓類型對功耗特性的深度影響
+
+**電晶體類型功耗比較 (2ns  clk )：**
+
+|Lib類型|門檻值電壓|Dynamic Power|Leakage Power|Data Arrival Time|Number of Cell|
+|---|---|---|---|---|---|
+|HVT|高門檻值|448.40μW|**1.48μW**|1.610ns|169|
+|SVT|標準門檻值|426.88μW|3.92μW|1.410ns|169|
+|LVT|低門檻值|444.47μW|**37.42μW**|1.510ns|170|
+
+**關鍵發現：**
+
+- LVT 漏電功率比 HVT 高出 **25倍**
+- Dynamic Power 相對穩定
+- 低門檻值電壓犧牲漏電控制換取更快 data arrival time
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## clk 頻率對時序閉合的關鍵影響
+
+**頻率 vs 時序收斂性分析：**
+
+| Lib名稱                   | clk 週期       | Slack  | Data Arrival Time | 面積     | 狀態    |
+| ----------------------- | ------------ | ------ | ----------------- | ------ | ----- |
+| saed90nm_typ_lt_hvt_ccs | 2ns (500MHz) | 0.220  | 1.610ns           | 2353.8 | ✅完成   |
+| saed90nm_typ_lt_hvt_ccs | 4ns (250MHz) | 2.220  | 1.610ns           | 2353.8 | ✅完成   |
+| saed90nm_typ_tm_hvt_ccs | 2ns (500MHz) | -0.38* | 1.970ns           | 3037.6 | ❌時序違規 |
+| saed90nm_typ_tm_hvt_ccs | 4ns (250MHz) | 0.050  | 3.540ns           | 2444.1 | ✅完成   |
+
+**時序閉合規律：**
+
+- clk 週期放寬顯著改善 Slack
+- 500MHz 為該設計的性能邊界
+- 不同工作條件影響時序收斂難度
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 負載電容對電路延遲的非線性影響
+
+**負載效應分析：**
+
+| Lib名稱                    | 負載電容 | Data Arrival Time | Slack  | 面積     | Number of Cell |
+| ------------------------ | ---- | ----------------- | ------ | ------ | -------------- |
+| saed90nm_min_htm_hvt_ccs | 0pf  | 1.740ns           | -0.24* | 3709.4 | 361            |
+| saed90nm_min_htm_hvt_ccs | 15pf | 2.030ns           | -0.53* | 3520.5 | 321            |
+| saed90nm_typ_lt_hvt_ccs  | 0pf  | 1.610ns           | 0.220  | 2353.8 | 169            |
+| saed90nm_typ_lt_hvt_ccs  | 15pf | 1.610ns           | 0.220  | 2359.3 | 170            |
+
+**複雜現象：**
+
+- 負載增加不總是導致 data arrival time 增加
+- 面積與 Number of Cell 的反向變化
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding-top: 10%" class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 第四部分：設計權衡與最佳化策略
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Slack 最佳化案例分析
+
+**極限時序性能配置：**
+
+| clk 頻率       | Lib名稱                    | 條件  | 負載   | Slack     | Data Arrival Time | Dynamic Power | Leakage Power |
+| ------------ | ------------------------ | --- | ---- | --------- | ----------------- | ------------- | ------------- |
+| 4ns (250MHz) | saed90nm_min_ltl_lvt_ccs | min | 0pf  | **3.290** | 0.560ns           | 133.59μW      | 2.58μW        |
+| 2ns (500MHz) | saed90nm_min_lvt_ccs     | min | 15pf | **1.520** | 0.350ns           | 591.75μW      | 37.42μW       |
+
+**時序最佳化特點：**
+
+- LVT 電晶體提供最佳速度性能
+- 極小的 data arrival time (0.350ns - 0.560ns)
+- 巨大的時序餘量保證穩定性
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 功耗最佳化案例分析
+
+**超低功耗配置：**
+
+| clk 頻率       | Lib名稱                    | 條件  | 負載  | Slack | Data Arrival Time | Dynamic Power | Leakage Power |
+| ------------ | ------------------------ | --- | --- | ----- | ----------------- | ------------- | ------------- |
+| 4ns (250MHz) | saed90nm_min_htm_hvt_ccs | min | 0pf | 0.010 | 3.490ns           | 104.19μW      | **3.15μW**    |
+| 2ns (500MHz) | saed90nm_typ_lt_hvt_ccs  | typ | 0pf | 0.220 | 1.610ns           | 448.40μW      | **1.48μW**    |
+
+**功耗最佳化特點：**
+
+- HVT 電晶體實現極低漏電流
+- 漏電功率控制在 1.48-3.15μW
+- Data arrival time性能犧牲換取功耗效益
+- 適合電池供電或功耗敏感應用
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 極端案例的系統性權衡分析 (1/2)
+
+**性能 vs 功耗權衡定律：**
+
+| 優化目標        | clk | 電晶體特性 | Slack | Data Arrival Time | 總功耗      | 功耗增加比例 | Data Arrival Time改善比例 |
+| ----------- | --- | ----- | ----- | ----------------- | -------- | ------ | --------------------- |
+| 4ns Slack最佳 | 4ns | LVT   | 3.290 | 0.560ns           | 136.17μW | +26.8% | **+84%**              |
+| 4ns 功耗最佳    | 4ns | HVT   | 0.010 | 3.490ns           | 107.34μW | 基準     | 基準                    |
+| 2ns Slack最佳 | 2ns | LVT   | 1.520 | 0.350ns           | 629.17μW | +39.9% | **+78%**              |
+| 2ns 功耗最佳    | 2ns | HVT   | 0.220 | 1.610ns           | 449.88μW | 基準     | 基準                    |
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 極端案例的系統性權衡分析 (2/2)
+
+**性能 vs 功耗權衡定律：**
+
+**權衡法則：**
+
+- 追求極致性能需付出 26.8%-39.9% 功耗代價
+- 換來 78%-84% 的data arrival time性能提升
+- 非線性權衡關係提供量化決策依據
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Number of Cell 與面積效率分析
+
+**電晶體單元使用效率：**
+
+| 配置類型      | Number of Cell | 面積 (μm²) | 單元密度           | 平均單元面積         |
+| --------- | -------------- | -------- | -------------- | -------------- |
+| 高性能 (LVT) | 170            | 2359.3   | 0.072 cell/μm² | 13.88 μm²/cell |
+| 平衡 (SVT)  | 169            | 2353.8   | 0.072 cell/μm² | 13.93 μm²/cell |
+| 低功耗 (HVT) | 169            | 2353.8   | 0.072 cell/μm² | 13.93 μm²/cell |
+
+**設計洞察：**
+
+- 不同閾值電壓對Number of Cell影響極小
+- 單元密度相對穩定
+- 面積變化主要來自佈局優化而非邏輯改變
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding-top: 10%" class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# 第五部分：結論
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 總結
+
+**synthesis_summary.tcl** 腳本通過系統性的配置探索和量化分析，為數位 IC 設計提供了科學的決策依據。
+
+**關鍵成果：**
+- 實現 **100% 自動化**的合成流程
+- 提供 **量化的權衡分析**
+- 建立 **可重複的評估方法**
+
+本研究不僅為當前項目提供了最佳配置選擇，更為未來的深次微米設計專案建立了寶貴的方法學基礎和經驗資料庫。
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## 感謝聆聽
+
+~~ END ~~
+</div></script></section></div>
+    </div>
+
+    <script src="dist/reveal.js"></script>
+
+    <script src="plugin/markdown/markdown.js"></script>
+    <script src="plugin/highlight/highlight.js"></script>
+    <script src="plugin/zoom/zoom.js"></script>
+    <script src="plugin/notes/notes.js"></script>
+    <script src="plugin/math/math.js"></script>
+	<script src="plugin/mermaid/mermaid.js"></script>
+	<script src="plugin/chart/chart.min.js"></script>
+	<script src="plugin/chart/plugin.js"></script>
+	<script src="plugin/menu/menu.js"></script>
+	<script src="plugin/customcontrols/plugin.js"></script>
+
+    <script>
+      function extend() {
+        var target = {};
+        for (var i = 0; i < arguments.length; i++) {
+          var source = arguments[i];
+          for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+              target[key] = source[key];
+            }
+          }
+        }
+        return target;
+      }
+
+	  function isLight(color) {
+		let hex = color.replace('#', '');
+
+		// convert #fff => #ffffff
+		if(hex.length == 3){
+			hex = `${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+		}
+
+		const c_r = parseInt(hex.substr(0, 2), 16);
+		const c_g = parseInt(hex.substr(2, 2), 16);
+		const c_b = parseInt(hex.substr(4, 2), 16);
+		const brightness = ((c_r * 299) + (c_g * 587) + (c_b * 114)) / 1000;
+		return brightness > 155;
+	}
+
+	var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--r-background-color').trim();
+	var isLight = isLight(bgColor);
+
+	if(isLight){
+		document.body.classList.add('has-light-background');
+	} else {
+		document.body.classList.add('has-dark-background');
+	}
+
+      // default options to init reveal.js
+      var defaultOptions = {
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+        transition: 'default', // none/fade/slide/convex/concave/zoom
+        plugins: [
+          RevealMarkdown,
+          RevealHighlight,
+          RevealZoom,
+          RevealNotes,
+          RevealMath.MathJax3,
+		  RevealMermaid,
+		  RevealChart,
+		  RevealCustomControls,
+		  RevealMenu,
+        ],
+
+
+    	allottedTime: 120 * 1000,
+
+		mathjax3: {
+			mathjax: 'plugin/math/mathjax/tex-mml-chtml.js',
+		},
+		markdown: {
+		  gfm: true,
+		  mangle: true,
+		  pedantic: false,
+		  smartLists: false,
+		  smartypants: false,
+		},
+
+		mermaid: {
+			theme: isLight ? 'default' : 'dark',
+		},
+
+		customcontrols: {
+			controls: [
+			]
+		},
+		menu: {
+			loadIcons: false
+		}
+      };
+
+      // options from URL query string
+      var queryOptions = Reveal().getQueryHash() || {};
+
+      var options = extend(defaultOptions, {"width":960,"height":700,"margin":0.04,"controls":true,"progress":true,"slideNumber":true,"transition":"slide","transitionSpeed":"default"}, queryOptions);
+    </script>
+
+    <script>
+      Reveal.initialize(options);
+    </script>
+  </body>
+
+  <!-- created with Advanced Slides -->
+</html>
